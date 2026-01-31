@@ -4,6 +4,42 @@ document.addEventListener("DOMContentLoaded", () => {
   const signupForm = document.getElementById("signup-form");
   const messageDiv = document.getElementById("message");
 
+  // Function to unregister a participant from an activity
+  async function unregisterParticipant(activityName, email) {
+    try {
+      const response = await fetch(
+        `/activities/${encodeURIComponent(activityName)}/unregister?email=${encodeURIComponent(email)}`,
+        {
+          method: "POST",
+        }
+      );
+
+      if (response.ok) {
+        messageDiv.textContent = `Unregistered ${email} from ${activityName}`;
+        messageDiv.className = "success";
+        messageDiv.classList.remove("hidden");
+        setTimeout(() => {
+          messageDiv.classList.add("hidden");
+        }, 5000);
+        // Reload activities to update the list
+        fetchActivities();
+      } else {
+        const result = await response.json();
+        messageDiv.textContent = result.detail || "Failed to unregister";
+        messageDiv.className = "error";
+        messageDiv.classList.remove("hidden");
+      }
+    } catch (error) {
+      messageDiv.textContent = "Failed to unregister. Please try again.";
+      messageDiv.className = "error";
+      messageDiv.classList.remove("hidden");
+      console.error("Error unregistering:", error);
+    }
+  }
+
+  // Make unregisterParticipant available globally
+  window.unregisterParticipant = unregisterParticipant;
+
   // Function to fetch activities from API
   async function fetchActivities() {
     try {
@@ -21,7 +57,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const spotsLeft = details.max_participants - details.participants.length;
 
         const participantsList = details.participants.length > 0
-          ? `<ul>${details.participants.map((p) => `<li>${p}</li>`).join("")}</ul>`
+          ? `<ul>${details.participants.map((p) => `<li><span>${p}</span><button class="delete-btn" onclick="event.stopPropagation(); window.unregisterParticipant('${name}', '${p}')">Delete</button></li>`).join("")}</ul>`
           : "<p><em>No participants yet</em></p>";
 
         activityCard.innerHTML = `
@@ -70,6 +106,8 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
         signupForm.reset();
+        // Reload activities to update the list
+        fetchActivities();
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "error";
